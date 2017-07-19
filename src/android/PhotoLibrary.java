@@ -167,6 +167,11 @@ public class PhotoLibrary extends CordovaPlugin {
                 return;
               }
 
+              if (!cordova.hasPermission(WRITE_EXTERNAL_STORAGE)) {
+                callbackContext.error(service.PERMISSION_ERROR);
+                return;
+              }
+
               PhotoLibraryService.PictureData thumbnail = service.getThumbnail(getContext(), photoId, thumbnailWidth, thumbnailHeight, quality);
 
               File outputDir = getContext().getCacheDir();
@@ -188,7 +193,7 @@ public class PhotoLibrary extends CordovaPlugin {
                 callbackContext.error(e.getMessage());
               }
 
-              callbackContext.success(outputFile.getAbsolutePath());
+              callbackContext.success("file://" + outputFile.getAbsolutePath());
 
             } catch (Exception e) {
               e.printStackTrace();
@@ -236,9 +241,14 @@ public class PhotoLibrary extends CordovaPlugin {
                 return;
               }
 
+              if (!cordova.hasPermission(WRITE_EXTERNAL_STORAGE)) {
+                callbackContext.error(service.PERMISSION_ERROR);
+                return;
+              }
+
               PhotoLibraryService.PictureData photo = service.getPhoto(getContext(), photoId);
 
-              File outputDir = getContext().getCacheDir();
+              File outputDir = getContext().getExternalCacheDir();
 
               String photoNameId = photoId.toString().replace('/', '-').replace(';', '-');
 
@@ -257,7 +267,7 @@ public class PhotoLibrary extends CordovaPlugin {
                 callbackContext.error(e.getMessage());
               }
 
-              callbackContext.success(outputFile.getAbsolutePath());
+              callbackContext.success("file://" + outputFile.getAbsolutePath());
 
             } catch (Exception e) {
               e.printStackTrace();
