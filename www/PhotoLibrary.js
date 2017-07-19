@@ -170,15 +170,17 @@ cordova.define("cordova-plugin-photo-library.PhotoLibrary", function (require, e
 
   };
 
-  photoLibrary.getNativeThumbnailUrl = function (photoIdOrLibraryItem, success, error) {
+  photoLibrary.getNativeThumbnailUrl = function (photoIdOrLibraryItem, success, error, options) {
 
     var photoId = typeof photoIdOrLibraryItem.id !== 'undefined' ? photoIdOrLibraryItem.id : photoIdOrLibraryItem;
+
+    options = getThumbnailOptionsWithDefaults(options);
 
     cordova.exec(
       success,
       error,
       'PhotoLibrary',
-      'getNativeThumbnailUrl', [photoId]
+      'getNativeThumbnailUrl', [photoId, options]
     );
 
   };
