@@ -282,7 +282,8 @@ public class PhotoLibrary extends CordovaPlugin {
 
               System.out.println("Listing files");
               for (File file : outputDir.listFiles()) {
-                System.out.println(file.getName());
+                Boolean b = file.delete();
+                System.out.println(file.getName() + " deleted: " +  b.toString());
               }
 
               callbackContext.success();
