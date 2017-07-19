@@ -2,12 +2,16 @@ package com.terikon.cordova.photolibrary;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.ContextWrapper;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.util.Base64;
 
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -30,7 +34,10 @@ public class PhotoLibrary extends CordovaPlugin {
   public static final String ACTION_GET_LIBRARY = "getLibrary";
   public static final String ACTION_GET_ALBUMS = "getAlbums";
   public static final String ACTION_GET_THUMBNAIL = "getThumbnail";
+  public static final String ACTION_GET_NATIVE_THUMBNAIL_URL = "getNativeThumbnailUrl";
   public static final String ACTION_GET_PHOTO = "getPhoto";
+  public static final String ACTION_GET_NATIVE_PHOTO_URL = "getNativePhotoUrl";
+  public static final String ACTION_PURGE_NATIVE_FILE_CACHE = "purgeNativeFileCache";
   public static final String ACTION_STOP_CACHING = "stopCaching";
   public static final String ACTION_REQUEST_AUTHORIZATION = "requestAuthorization";
   public static final String ACTION_SAVE_IMAGE = "saveImage";
@@ -43,7 +50,6 @@ public class PhotoLibrary extends CordovaPlugin {
     super.pluginInitialize();
 
     service = PhotoLibraryService.getInstance();
-
   }
 
   @Override
@@ -144,6 +150,55 @@ public class PhotoLibrary extends CordovaPlugin {
         });
         return true;
 
+      } else if (ACTION_GET_NATIVE_THUMBNAIL_URL.equals(action)) {
+
+        cordova.getThreadPool().execute(new Runnable() {
+          public void run() {
+            try {
+
+              final String photoId = args.getString(0);
+              final JSONObject options = args.optJSONObject(1);
+              final int thumbnailWidth = options.getInt("thumbnailWidth");
+              final int thumbnailHeight = options.getInt("thumbnailHeight");
+              final double quality = options.getDouble("quality");
+
+              if (!cordova.hasPermission(READ_EXTERNAL_STORAGE)) {
+                callbackContext.error(service.PERMISSION_ERROR);
+                return;
+              }
+
+              PhotoLibraryService.PictureData thumbnail = service.getThumbnail(getContext(), photoId, thumbnailWidth, thumbnailHeight, quality);
+
+              File outputDir = getContext().getCacheDir();
+
+              String photoNameId = photoId.toString().replace('/', '-').replace(';', '-');
+
+              File outputFile = new File(outputDir, "cdvphotolibrary-thumbnail-" + photoNameId);
+
+              try
+              {
+                BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(outputFile));
+                bos.write(thumbnail.bytes);
+                bos.flush();
+                bos.close();
+              }
+              catch (IOException e)
+              {
+                e.printStackTrace();
+                callbackContext.error(e.getMessage());
+              }
+
+              callbackContext.success(outputFile.getAbsolutePath());
+
+            } catch (Exception e) {
+              e.printStackTrace();
+              callbackContext.error(e.getMessage());
+            }
+          }
+        });
+        return true;
+
+
       } else if (ACTION_GET_PHOTO.equals(action)) {
 
         cordova.getThreadPool().execute(new Runnable() {
@@ -159,6 +214,78 @@ public class PhotoLibrary extends CordovaPlugin {
 
               PhotoLibraryService.PictureData photo = service.getPhoto(getContext(), photoId);
               callbackContext.sendPluginResult(createMultipartPluginResult(PluginResult.Status.OK, photo));
+
+            } catch (Exception e) {
+              e.printStackTrace();
+              callbackContext.error(e.getMessage());
+            }
+          }
+        });
+        return true;
+
+      } else if (ACTION_GET_NATIVE_PHOTO_URL.equals(action)) {
+
+        cordova.getThreadPool().execute(new Runnable() {
+          public void run() {
+            try {
+
+              final String photoId = args.getString(0);
+
+              if (!cordova.hasPermission(READ_EXTERNAL_STORAGE)) {
+                callbackContext.error(service.PERMISSION_ERROR);
+                return;
+              }
+
+              PhotoLibraryService.PictureData photo = service.getPhoto(getContext(), photoId);
+
+              File outputDir = getContext().getCacheDir();
+
+              String photoNameId = photoId.toString().replace('/', '-').replace(';', '-');
+
+              File outputFile = new File(outputDir, "cdvphotolibrary" + photoNameId);
+
+              try
+              {
+                BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(outputFile));
+                bos.write(photo.bytes);
+                bos.flush();
+                bos.close();
+              }
+              catch (IOException e)
+              {
+                e.printStackTrace();
+                callbackContext.error(e.getMessage());
+              }
+
+              callbackContext.success(outputFile.getAbsolutePath());
+
+            } catch (Exception e) {
+              e.printStackTrace();
+              callbackContext.error(e.getMessage());
+            }
+          }
+        });
+        return true;
+
+      } else if (ACTION_PURGE_NATIVE_FILE_CACHE.equals(action)) {
+
+        cordova.getThreadPool().execute(new Runnable() {
+          public void run() {
+            try {
+
+              if (!cordova.hasPermission(READ_EXTERNAL_STORAGE)) {
+                callbackContext.error(service.PERMISSION_ERROR);
+                return;
+              }
+
+              File outputDir = getContext().getCacheDir();
+
+              System.out.println("Listing files");
+              for (File file : outputDir.listFiles()) {
+                System.out.println(file.getName());
+              }
+
+              callbackContext.success();
 
             } catch (Exception e) {
               e.printStackTrace();
