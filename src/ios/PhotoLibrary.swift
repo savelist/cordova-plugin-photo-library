@@ -3,7 +3,7 @@ import Foundation
 @objc(PhotoLibrary) class PhotoLibrary : CDVPlugin {
 
     lazy var concurrentQueue: DispatchQueue = DispatchQueue(label: "photo-library.queue.plugin", qos: DispatchQoS.utility, attributes: [.concurrent])
-    
+
     override func pluginInitialize() {
 
         // Do not call PhotoLibraryService here, as it will cause permission prompt to appear on app start.
@@ -65,26 +65,26 @@ import Foundation
 
         }
     }
-    
+
     func getAlbums(_ command: CDVInvokedUrlCommand) {
         concurrentQueue.async {
-            
+
             if !PhotoLibraryService.hasPermission() {
                 let pluginResult = CDVPluginResult(status: CDVCommandStatus_ERROR, messageAs: PhotoLibraryService.PERMISSION_ERROR)
                 self.commandDelegate!.send(pluginResult, callbackId: command.callbackId)
                 return
             }
-            
+
             let service = PhotoLibraryService.instance
-            
+
             let albums = service.getAlbums()
-            
+
             let pluginResult = CDVPluginResult(status: CDVCommandStatus_OK, messageAs: albums)
             self.commandDelegate!.send(pluginResult, callbackId: command.callbackId)
-            
+
         }
     }
-    
+
     func getThumbnail(_ command: CDVInvokedUrlCommand) {
         concurrentQueue.async {
 
@@ -108,6 +108,61 @@ import Foundation
                     CDVPluginResult(
                         status: CDVCommandStatus_OK,
                         messageAsMultipart: [imageData!.data, imageData!.mimeType])
+                    :
+                    CDVPluginResult(
+                        status: CDVCommandStatus_ERROR,
+                        messageAs: "Could not fetch the thumbnail")
+
+                self.commandDelegate!.send(pluginResult, callbackId: command.callbackId )
+
+            }
+
+        }
+    }
+
+    func getNativeThumbnailUrl(_ command: CDVInvokedUrlCommand) {
+        concurrentQueue.async {
+
+            if !PhotoLibraryService.hasPermission() {
+                let pluginResult = CDVPluginResult(status: CDVCommandStatus_ERROR, messageAs: PhotoLibraryService.PERMISSION_ERROR)
+                self.commandDelegate!.send(pluginResult, callbackId: command.callbackId)
+                return
+            }
+
+            let service = PhotoLibraryService.instance
+
+            let photoId = command.arguments[0] as! String
+            let options = command.arguments[1] as! NSDictionary
+            let thumbnailWidth = options["thumbnailWidth"] as! Int
+            let thumbnailHeight = options["thumbnailHeight"] as! Int
+            let quality = options["quality"] as! Float
+
+            service.getThumbnail(photoId, thumbnailWidth: thumbnailWidth, thumbnailHeight: thumbnailHeight, quality: quality) { (imageData) in
+
+                var docURL = (FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)).last
+
+                let fileExtension = (imageData?.mimeType == "image/png") ? ".png" : ".jpg"
+
+                let filename = photoId.replacingOccurrences(of: "/", with: "-");
+
+                docURL = docURL?.appendingPathComponent("cdvphotolibrary-thumbnail-" + filename + fileExtension)
+
+                do {
+                    try imageData?.data.write(to: docURL!)
+
+                    let attr:NSDictionary? = try FileManager.default.attributesOfItem(atPath: (docURL?.path)!) as NSDictionary
+                    if let _attr = attr {
+                        print(_attr.fileSize());
+                    }
+
+                } catch {
+                    print("Could not write thumbnail image!: \(error)")
+                }
+
+                let pluginResult = imageData != nil ?
+                    CDVPluginResult(
+                        status: CDVCommandStatus_OK,
+                        messageAs: docURL?.absoluteString)
                     :
                     CDVPluginResult(
                         status: CDVCommandStatus_ERROR,
@@ -149,6 +204,84 @@ import Foundation
             }
 
         }
+    }
+
+    func getNativePhotoUrl(_ command: CDVInvokedUrlCommand) {
+        concurrentQueue.async {
+
+            if !PhotoLibraryService.hasPermission() {
+                let pluginResult = CDVPluginResult(status: CDVCommandStatus_ERROR, messageAs: PhotoLibraryService.PERMISSION_ERROR)
+                self.commandDelegate!.send(pluginResult, callbackId: command.callbackId)
+                return
+            }
+
+            let service = PhotoLibraryService.instance
+
+            let photoId = command.arguments[0] as! String
+
+            service.getPhoto(photoId) { (imageData) in
+
+                var docURL = (FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)).last
+
+                let fileExtension = (imageData?.mimeType == "image/png") ? ".png" : ".jpg"
+
+                let filename = photoId.replacingOccurrences(of: "/", with: "-");
+
+                docURL = docURL?.appendingPathComponent("cdvphotolibrary-" + filename + fileExtension)
+
+                do {
+                    try imageData?.data.write(to: docURL!)
+
+                    let attr:NSDictionary? = try FileManager.default.attributesOfItem(atPath: (docURL?.path)!) as NSDictionary
+                    if let _attr = attr {
+                        print(_attr.fileSize());
+                    }
+
+                } catch {
+                    print("Could not write image!")
+                }
+
+                let pluginResult = imageData != nil ?
+                    CDVPluginResult(
+                        status: CDVCommandStatus_OK,
+                        messageAs: docURL?.absoluteString)
+                    :
+                    CDVPluginResult(
+                        status: CDVCommandStatus_ERROR,
+                        messageAs: "Could not fetch the image")
+
+                self.commandDelegate!.send(pluginResult, callbackId: command.callbackId	)
+
+            }
+
+        }
+    }
+
+    func purgeNativeFileCache(_ command: CDVInvokedUrlCommand) {
+        print("starting purge file cache")
+        let docURL = (FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)).last
+
+        do {
+            // Get the directory contents urls (including subfolders urls)
+            let directoryContents = try FileManager.default.contentsOfDirectory(at: docURL!, includingPropertiesForKeys: nil, options: [])
+
+            for url in directoryContents {
+
+                let fileName = url.lastPathComponent
+                if (fileName.hasPrefix("cdvphotolibrary")) {
+                    try FileManager.default.removeItem(atPath: url.path);
+                }
+            }
+
+        } catch let error as NSError {
+            print(error.localizedDescription)
+            let pluginResult = CDVPluginResult(status: CDVCommandStatus_ERROR, messageAs: error.localizedDescription)
+            self.commandDelegate!.send(pluginResult, callbackId: command.callbackId	)
+        }
+
+        let pluginResult = CDVPluginResult(status: CDVCommandStatus_OK)
+        self.commandDelegate!.send(pluginResult, callbackId: command.callbackId	)
+
     }
 
     func stopCaching(_ command: CDVInvokedUrlCommand) {
