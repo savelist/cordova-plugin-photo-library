@@ -288,12 +288,17 @@ public class PhotoLibrary extends CordovaPlugin {
                 return;
               }
 
-              File outputDir = getContext().getCacheDir();
+              if (!cordova.hasPermission(WRITE_EXTERNAL_STORAGE)) {
+                callbackContext.error(service.PERMISSION_ERROR);
+                return;
+              }
 
-              System.out.println("Listing files");
+              File outputDir = getContext().getExternalCacheDir();
+
               for (File file : outputDir.listFiles()) {
-                Boolean b = file.delete();
-                System.out.println(file.getName() + " deleted: " +  b.toString());
+                if (file.startsWith("cdvphotolibrary")) {
+                  Boolean b = file.delete();
+                }
               }
 
               callbackContext.success();
