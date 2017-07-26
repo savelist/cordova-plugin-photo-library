@@ -296,7 +296,7 @@ public class PhotoLibrary extends CordovaPlugin {
               File outputDir = getContext().getExternalCacheDir();
 
               for (File file : outputDir.listFiles()) {
-                if (file.startsWith("cdvphotolibrary")) {
+                if (file.getName().startsWith("cdvphotolibrary")) {
                   Boolean b = file.delete();
                 }
               }
