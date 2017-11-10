@@ -29,9 +29,9 @@ import Foundation
             let service = PhotoLibraryService.instance
 
             let options = command.arguments[0] as! NSDictionary
-            let thumbnailWidth = options["thumbnailWidth"] as! Int
-            let thumbnailHeight = options["thumbnailHeight"] as! Int
-            let itemsInChunk = options["itemsInChunk"] as! Int
+            let thumbnailWidth = Int(truncating: options["thumbnailWidth"] as! NSNumber);
+            let thumbnailHeight = Int(truncating: options["thumbnailHeight"] as! NSNumber);
+            let itemsInChunk = Int(truncating: options["itemsInChunk"] as! NSNumber);
             let chunkTimeSec = options["chunkTimeSec"] as! Double
             let useOriginalFileNames = options["useOriginalFileNames"] as! Bool
             let includeAlbumData = options["includeAlbumData"] as! Bool
@@ -98,8 +98,8 @@ import Foundation
 
             let photoId = command.arguments[0] as! String
             let options = command.arguments[1] as! NSDictionary
-            let thumbnailWidth = options["thumbnailWidth"] as! Int
-            let thumbnailHeight = options["thumbnailHeight"] as! Int
+            let thumbnailWidth = Int(truncating: options["thumbnailWidth"] as! NSNumber);
+            let thumbnailHeight = Int(truncating: options["thumbnailHeight"] as! NSNumber);
             let quality = options["quality"] as! Float
 
             service.getThumbnail(photoId, thumbnailWidth: thumbnailWidth, thumbnailHeight: thumbnailHeight, quality: quality) { (imageData) in
@@ -133,32 +133,31 @@ import Foundation
 
             let photoId = command.arguments[0] as! String
             let options = command.arguments[1] as! NSDictionary
-            let thumbnailWidth = options["thumbnailWidth"] as! Int
-            let thumbnailHeight = options["thumbnailHeight"] as! Int
-            let quality = options["quality"] as! Float
-
+            let quality = Float(truncating: options["quality"] as! NSNumber);
+            let thumbnailWidth = Int(truncating: options["thumbnailWidth"] as! NSNumber);
+            let thumbnailHeight = Int(truncating: options["thumbnailHeight"] as! NSNumber);
             service.getThumbnail(photoId, thumbnailWidth: thumbnailWidth, thumbnailHeight: thumbnailHeight, quality: quality) { (imageData) in
-
+                
                 var docURL = (FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)).last
-
+                
                 let fileExtension = (imageData?.mimeType == "image/png") ? ".png" : ".jpg"
-
+                
                 let filename = photoId.replacingOccurrences(of: "/", with: "-");
-
+                
                 docURL = docURL?.appendingPathComponent("cdvphotolibrary-thumbnail-" + filename + fileExtension)
-
+                
                 do {
                     try imageData?.data.write(to: docURL!)
-
+                    
                     let attr:NSDictionary? = try FileManager.default.attributesOfItem(atPath: (docURL?.path)!) as NSDictionary
                     if let _attr = attr {
                         print(_attr.fileSize());
                     }
-
+                    
                 } catch {
                     print("Could not write thumbnail image!: \(error)")
                 }
-
+                
                 let pluginResult = imageData != nil ?
                     CDVPluginResult(
                         status: CDVCommandStatus_OK,
@@ -167,11 +166,11 @@ import Foundation
                     CDVPluginResult(
                         status: CDVCommandStatus_ERROR,
                         messageAs: "Could not fetch the thumbnail")
-
+                
                 self.commandDelegate!.send(pluginResult, callbackId: command.callbackId )
 
             }
-
+            
         }
     }
 
